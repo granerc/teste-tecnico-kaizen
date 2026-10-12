@@ -1,0 +1,18 @@
+# Dependencias
+node_modules/
+
+# Segredos e configuracao local: so o .env.example vai para o repositorio
+.env
+.env.*
+!.env.example
+
+# Banco local da loja (SQLite): e criado por `npm run db:init` ou na subida
+backend/data/*.db
+backend/data/*.db-wal
+backend/data/*.db-shm
+
+# Build do front (gerado por `npm run build`)
+frontend/dist/
+
+# Logs
+*.log
