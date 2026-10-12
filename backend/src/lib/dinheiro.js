@@ -4,7 +4,9 @@
  */
 
 export function paraCentavos(reais) {
-  return Math.floor(Number(reais) * 100);
+  // Math.round, nao Math.floor: 312.4 * 100 vale 31239.999999999996 em ponto
+  // flutuante, e o floor jogava 1 centavo fora a cada unidade.
+  return Math.round(Number(reais) * 100);
 }
 
 export function paraReais(centavos) {
