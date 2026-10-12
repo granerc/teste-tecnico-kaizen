@@ -30,7 +30,8 @@ rotasPerfil.patch('/', (req, res) => {
   const dados = {
     nome: textoObrigatorio(corpo.nome, 'nome', erros, { min: 3, max: 120 }),
     documento: documento(corpo.documento, 'documento', erros),
-    telefone: telefone(corpo.telefone, 'telefone', erros),
+    // undefined = campo ausente (mantem); texto vazio = apagar o telefone.
+    telefone: corpo.telefone === undefined ? undefined : telefone(corpo.telefone, 'telefone', erros),
   };
 
   erros.lancarSeInvalido('Nao foi possivel salvar o perfil.');

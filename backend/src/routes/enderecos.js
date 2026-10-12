@@ -32,7 +32,9 @@ function validarEndereco(corpo) {
     bairro: textoObrigatorio(corpo.bairro, 'bairro', erros, { min: 2, max: 80 }),
     cidade: textoObrigatorio(corpo.cidade, 'cidade', erros, { min: 2, max: 80 }),
     uf: uf(corpo.uf, 'uf', erros),
-    principal: lerBooleano(corpo.principal) ?? false,
+    // undefined = "nao mexa". Antes caia em false e um PUT sem o campo tirava a
+    // marca de principal do endereco.
+    principal: lerBooleano(corpo.principal) ?? undefined,
   };
 
   erros.lancarSeInvalido('Nao foi possivel salvar o endereco.');
