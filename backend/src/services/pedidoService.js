@@ -3,7 +3,13 @@ import { ApiError } from '../lib/ApiError.js';
 import { paraCentavos, paraReais } from '../lib/dinheiro.js';
 import * as erp from '../erp/cliente.js';
 import { buscarEndereco, serializarEndereco } from './enderecoService.js';
-import { lerCarrinho, limparCarrinho } from './carrinhoService.js';
+import {
+  carrinhoParaFechar,
+  encerrarCarrinhoFechado,
+  lerCarrinhoPorId,
+  liberarReserva,
+  reservarParaFechamento,
+} from './carrinhoService.js';
 
 function enderecoEmUmaLinha(e) {
   const complemento = e.complemento ? `, ${e.complemento}` : '';
@@ -11,13 +17,14 @@ function enderecoEmUmaLinha(e) {
 }
 
 /**
- * Fecha o pedido.
+ * Fecha o pedido DE UM carrinho: o informado em `carrinhoId` ou, sem ele, o
+ * ativo. Os demais carrinhos da pessoa nao sao tocados.
  *
  * O pedido de verdade nasce no ERP. A loja guarda so o vinculo
  * numero <-> usuario, porque o ERP conhece "Fulano, CPF X", nao "a conta
  * fulano@email.com". Sem esse vinculo nao daria para montar "meus pedidos".
  */
-export async function finalizarPedido(usuario, enderecoId, observacao, db = obterBanco()) {
+export async function finalizarPedido(usuario, enderecoId, observacao, carrinhoId = null, db = obterBanco()) {
   const enderecoLinha = buscarEndereco(usuario.id, enderecoId, db);
   if (!enderecoLinha) {
     throw ApiError.naoProcessavel('Nao foi possivel fechar o pedido.', [
@@ -25,71 +32,95 @@ export async function finalizarPedido(usuario, enderecoId, observacao, db = obte
     ]);
   }
 
-  const carrinho = await lerCarrinho(usuario.id, db);
+  // 404 se o carrinho nao for desta pessoa.
+  const alvo = carrinhoParaFechar(usuario.id, carrinhoId, db);
 
-  if (carrinho.itens.length === 0) {
-    throw ApiError.conflito('CARRINHO_VAZIO', 'Seu carrinho esta vazio.');
-  }
+  // Trava o carrinho ate o pedido sair. Sem isso, dois "Confirmar" ao mesmo
+  // tempo (clique duplo, duas abas) leriam o mesmo carrinho e criariam dois
+  // pedidos no ERP, baixando o estoque duas vezes.
+  reservarParaFechamento(usuario.id, alvo.id, db);
 
-  if (!carrinho.pronto_para_checkout) {
-    throw ApiError.conflito(
-      'CARRINHO_COM_PENDENCIAS',
-      'Alguns itens do carrinho precisam de ajuste antes de fechar o pedido.',
-      carrinho.itens
-        .filter((item) => !item.disponivel)
-        .map((item) => ({ codigo_produto: item.codigo_produto, motivo: item.problema })),
-    );
-  }
+  let pedidoCriadoNoErp = false;
 
-  const endereco = serializarEndereco(enderecoLinha);
-
-  // O ERP nao tem campo de endereco de entrega; vai na observacao, que e como
-  // o SIAC recebe esse dado hoje.
-  const partesObservacao = [`Entrega: ${enderecoEmUmaLinha(endereco)}`];
-  if (observacao) partesObservacao.push(`Obs. do cliente: ${observacao}`);
-
-  const pedidoErp = await erp.criarPedido({
-    cliente: { nome: usuario.nome, documento: usuario.documento },
-    observacao: partesObservacao.join(' | ').slice(0, 500),
-    itens: carrinho.itens.map((item) => ({
-      codigo_produto: item.codigo_produto,
-      quantidade: item.quantidade,
-    })),
-  });
-
-  /*
-   * Daqui para baixo o estoque JA foi baixado no ERP. Se a gravacao local
-   * falhar, o pedido existe mas nao aparece em "meus pedidos" - por isso o log
-   * abaixo carrega o numero: da para reconciliar a mao.
-   * Resolver isso de verdade exigiria um outbox ou um endpoint de
-   * cancelamento no ERP; esta anotado no README como evolucao.
-   */
   try {
-    db.transaction(() => {
-      db.prepare(`
-        INSERT INTO pedidos_usuario (
-          usuario_id, numero_erp, endereco_entrega, valor_total_centavos, criado_em
-        ) VALUES (?, ?, ?, ?, ?)
-      `).run(
-        usuario.id,
-        pedidoErp.numero,
-        JSON.stringify(endereco),
-        paraCentavos(pedidoErp.valor_total),
-        agoraISO(),
-      );
+    const carrinho = await lerCarrinhoPorId(usuario.id, alvo.id, db);
 
-      limparCarrinho(usuario.id, db);
-    })();
+    if (carrinho.itens.length === 0) {
+      throw ApiError.conflito('CARRINHO_VAZIO', 'Seu carrinho esta vazio.');
+    }
+
+    if (!carrinho.pronto_para_checkout) {
+      throw ApiError.conflito(
+        'CARRINHO_COM_PENDENCIAS',
+        'Alguns itens do carrinho precisam de ajuste antes de fechar o pedido.',
+        carrinho.itens
+          .filter((item) => !item.disponivel)
+          .map((item) => ({ codigo_produto: item.codigo_produto, motivo: item.problema })),
+      );
+    }
+
+    const endereco = serializarEndereco(enderecoLinha);
+
+    // O ERP nao tem campo de endereco de entrega; vai na observacao, que e como
+    // o SIAC recebe esse dado hoje. O nome do carrinho tambem: ajuda quem separa
+    // o pedido no balcao ("Civic prata").
+    const partesObservacao = [`Entrega: ${enderecoEmUmaLinha(endereco)}`];
+    if (alvo.nome) partesObservacao.push(`Carrinho: ${alvo.nome}`);
+    if (observacao) partesObservacao.push(`Obs. do cliente: ${observacao}`);
+
+    const pedidoErp = await erp.criarPedido({
+      cliente: { nome: usuario.nome, documento: usuario.documento },
+      observacao: partesObservacao.join(' | ').slice(0, 500),
+      itens: carrinho.itens.map((item) => ({
+        codigo_produto: item.codigo_produto,
+        quantidade: item.quantidade,
+      })),
+    });
+
+    pedidoCriadoNoErp = true;
+
+    /*
+     * Daqui para baixo o estoque JA foi baixado no ERP. Se a gravacao local
+     * falhar, o pedido existe mas nao aparece em "meus pedidos" - por isso o log
+     * abaixo carrega o numero: da para reconciliar a mao. A reserva nao e
+     * liberada nesse caso (expira sozinha em 1 min), para o cliente nao
+     * reenviar o mesmo carrinho na hora e duplicar o pedido.
+     * Resolver isso de verdade exigiria um outbox ou um endpoint de
+     * cancelamento no ERP; esta anotado no README como evolucao.
+     */
+    try {
+      db.transaction(() => {
+        db.prepare(`
+          INSERT INTO pedidos_usuario (
+            usuario_id, numero_erp, endereco_entrega, valor_total_centavos, criado_em
+          ) VALUES (?, ?, ?, ?, ?)
+        `).run(
+          usuario.id,
+          pedidoErp.numero,
+          JSON.stringify(endereco),
+          paraCentavos(pedidoErp.valor_total),
+          agoraISO(),
+        );
+
+        // So o carrinho que virou pedido sai de cena.
+        encerrarCarrinhoFechado(usuario.id, alvo.id, db);
+      })();
+    } catch (erro) {
+      console.error(
+        `[pedido] ERP criou ${pedidoErp.numero} para o usuario ${usuario.id}, ` +
+        'mas a gravacao local falhou. Reconciliar manualmente.',
+        erro,
+      );
+      throw erro;
+    }
+
+    return { ...pedidoErp, endereco_entrega: endereco };
   } catch (erro) {
-    console.error(
-      `[pedido] ERP criou ${pedidoErp.numero} para o usuario ${usuario.id}, ` +
-      'mas a gravacao local falhou. Reconciliar manualmente.',
-      erro,
-    );
+    // Falhou ANTES de existir pedido (vazio, pendencia, ERP recusou/fora do ar):
+    // o carrinho volta a ser editavel imediatamente.
+    if (!pedidoCriadoNoErp) liberarReserva(alvo.id, db);
     throw erro;
   }
-
-  return { ...pedidoErp, endereco_entrega: endereco };
 }
 
 /**

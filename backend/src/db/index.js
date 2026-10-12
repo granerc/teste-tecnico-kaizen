@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { config } from '../config.js';
+import { concluirMigracaoCarrinhos, prepararMigracaoCarrinhos } from './migracoes.js';
 
 let instancia = null;
 
@@ -20,7 +21,13 @@ export function obterBanco() {
 
 export function aplicarSchema(db = obterBanco()) {
   const ddl = fs.readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
-  db.exec(ddl);
+
+  // Tudo ou nada: se a migracao falhar no meio, o banco volta ao que era.
+  db.transaction(() => {
+    const carrinhoLegado = prepararMigracaoCarrinhos(db);
+    db.exec(ddl);
+    if (carrinhoLegado) concluirMigracaoCarrinhos(db);
+  })();
 }
 
 export function fecharBanco() {
