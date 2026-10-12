@@ -53,8 +53,9 @@ export function Checkout() {
       // O endereco que a pessoa escolheu na tela (KZN-331). Antes isto procurava
       // o endereco principal e ignorava a escolha: quem marcava "Oficina" e
       // tinha "Casa" como principal via o pedido sair para a casa.
-      // carrinho_id explicito: fecha o carrinho que a pessoa ESTAVA vendo, mesmo
-      // que o ativo tenha mudado em outra aba enquanto ela escolhia o endereco.
+      // carrinho_id e uma trava: o servidor fecha o ATIVO, e recusa (409) se o
+      // ativo nao for o carrinho que esta nesta tela - por exemplo, se a pessoa
+      // trocou de carrinho em outra aba enquanto escolhia o endereco.
       const resposta = await api.pedidos.criar({
         endereco_id: enderecoId,
         observacao,

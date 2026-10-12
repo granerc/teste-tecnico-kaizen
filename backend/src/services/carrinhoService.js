@@ -478,16 +478,6 @@ export function esvaziarCarrinho(usuarioId, carrinhoId, db = obterBanco()) {
 // ------------------------------------------------------------------- checkout --
 
 /**
- * Carrinho que o checkout vai fechar: o que a pessoa mandou (id) ou, sem id, o
- * ativo. Devolve a linha ja conferida como sendo dela.
- */
-export function carrinhoParaFechar(usuarioId, carrinhoId, db = obterBanco()) {
-  return carrinhoId == null
-    ? garantirCarrinhoAtivo(usuarioId, db)
-    : exigirCarrinho(usuarioId, carrinhoId, db);
-}
-
-/**
  * Reserva o carrinho para o checkout de forma atomica (um UPDATE condicional).
  * Dois "Confirmar pedido" simultaneos - clique duplo, duas abas - disputam a
  * mesma linha e so um ganha; o outro leva 409 em vez de criar um segundo pedido

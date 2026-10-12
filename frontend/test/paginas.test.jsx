@@ -51,7 +51,7 @@ describe('KZN-331: o pedido sai para o endereco ESCOLHIDO', () => {
     expect(screen.getByText(/Entrega em/)).toHaveTextContent('Oficina');
   });
 
-  test('fecha o carrinho que a pessoa estava vendo (carrinho_id explicito)', async () => {
+  test('manda o id do carrinho que esta na tela (trava contra aba desatualizada)', async () => {
     const servidor = cenario({ 'POST /api/pedidos': { numero: 'PED-0001' } });
     const usuario = userEvent.setup();
     renderizar(<Checkout />);
@@ -90,6 +90,29 @@ describe('KZN-331: o pedido sai para o endereco ESCOLHIDO', () => {
     renderizar(<Checkout />);
 
     expect(await screen.findByText(/seus outros 2 carrinhos continuam salvos/)).toBeInTheDocument();
+  });
+
+  test('o ativo mudou em outra aba (409): avisa e a tela passa a mostrar o carrinho certo', async () => {
+    let leituras = 0;
+    cenario({
+      'GET /api/carrinhos': () => {
+        leituras += 1;
+        return leituras === 1
+          ? estado({ id: 4, nome: 'Gol do João', itens: [item('PEC-001', 2)], outros: [{ id: 2, nome: 'Civic prata', pecas: 4 }] })
+          : estado({ id: 2, nome: 'Civic prata', itens: [item('PEC-009', 4)], outros: [{ id: 4, nome: 'Gol do João', pecas: 2 }] });
+      },
+      'POST /api/pedidos': erroApi(409, 'CARRINHO_ATIVO_MUDOU', 'O carrinho ativo mudou desde que voce abriu o checkout.'),
+    });
+    const usuario = userEvent.setup();
+    renderizar(<Checkout />);
+
+    await usuario.click(await screen.findByRole('button', { name: 'Confirmar pedido' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('carrinho ativo mudou');
+    // A tela foi relida: agora mostra o carrinho que de fato esta ativo.
+    expect(await screen.findByText(/Carrinho/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Civic prata')).toBeInTheDocument());
+    expect(screen.getByTestId('url')).toHaveTextContent('/');
   });
 
   test('o servidor recusou (estoque): mostra o motivo e continua na tela', async () => {

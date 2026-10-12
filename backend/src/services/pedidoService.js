@@ -4,8 +4,8 @@ import { paraCentavos, paraReais } from '../lib/dinheiro.js';
 import * as erp from '../erp/cliente.js';
 import { buscarEndereco, serializarEndereco } from './enderecoService.js';
 import {
-  carrinhoParaFechar,
   encerrarCarrinhoFechado,
+  garantirCarrinhoAtivo,
   lerCarrinhoPorId,
   liberarReserva,
   reservarParaFechamento,
@@ -17,8 +17,13 @@ function enderecoEmUmaLinha(e) {
 }
 
 /**
- * Fecha o pedido DE UM carrinho: o informado em `carrinhoId` ou, sem ele, o
- * ativo. Os demais carrinhos da pessoa nao sao tocados.
+ * Fecha o pedido do carrinho ATIVO. Os demais carrinhos da pessoa nao sao
+ * tocados.
+ *
+ * `carrinhoId` e opcional e funciona como TRAVA, nao como escolha: o front manda
+ * o id do carrinho que a pessoa estava vendo. Se nesse meio-tempo o ativo mudou
+ * (outra aba, outro aparelho), recusamos em vez de fechar um carrinho diferente
+ * do que ela conferiu na tela.
  *
  * O pedido de verdade nasce no ERP. A loja guarda so o vinculo
  * numero <-> usuario, porque o ERP conhece "Fulano, CPF X", nao "a conta
@@ -32,8 +37,14 @@ export async function finalizarPedido(usuario, enderecoId, observacao, carrinhoI
     ]);
   }
 
-  // 404 se o carrinho nao for desta pessoa.
-  const alvo = carrinhoParaFechar(usuario.id, carrinhoId, db);
+  const alvo = garantirCarrinhoAtivo(usuario.id, db);
+
+  if (carrinhoId != null && carrinhoId !== alvo.id) {
+    throw ApiError.conflito(
+      'CARRINHO_ATIVO_MUDOU',
+      'O carrinho ativo mudou desde que voce abriu o checkout. Confira o carrinho e tente de novo.',
+    );
+  }
 
   // Trava o carrinho ate o pedido sair. Sem isso, dois "Confirmar" ao mesmo
   // tempo (clique duplo, duas abas) leriam o mesmo carrinho e criariam dois

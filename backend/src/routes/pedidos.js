@@ -19,8 +19,9 @@ rotasPedidos.use(autenticar);
 
 /**
  * POST /api/pedidos - checkout.
- * Fecha UM carrinho (o `carrinho_id` informado ou, sem ele, o ativo), manda para
- * o ERP e encerra so esse carrinho. Os outros continuam como estavam.
+ * Fecha o carrinho ATIVO, manda para o ERP e encerra so esse carrinho; os outros
+ * continuam como estavam. `carrinho_id` (opcional) e uma trava: se nao for o
+ * ativo, responde 409 CARRINHO_ATIVO_MUDOU em vez de fechar outro carrinho.
  */
 rotasPedidos.post('/', async (req, res) => {
   const corpo = exigirObjeto(req.body);

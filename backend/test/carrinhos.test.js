@@ -311,7 +311,7 @@ describe('contrato antigo (/api/carrinho)', () => {
   });
 });
 
-describe('checkout: fecha so o carrinho escolhido', () => {
+describe('checkout: fecha so o carrinho ativo', () => {
   async function prepararDoisCarrinhos() {
     const ana = await amb.novaPessoa('Ana Souza');
     const endereco = await amb.novoEndereco(ana);
@@ -355,29 +355,41 @@ describe('checkout: fecha so o carrinho escolhido', () => {
     assert.equal(estado.itens.length, 0);
   });
 
-  test('carrinho_id escolhe qual fechar, sem trocar o ativo', async () => {
+  test('carrinho_id e uma trava: igual ao ativo fecha normalmente', async () => {
+    const { ana, endereco, gol } = await prepararDoisCarrinhos();
+
+    const r = await ana.post('/api/pedidos', { endereco_id: endereco.id, carrinho_id: gol.id });
+    assert.equal(r.status, 201);
+    assert.deepEqual(amb.erp.estado.pedidosCriados[0].itens, [{ codigo_produto: 'PEC-002', quantidade: 1 }]);
+  });
+
+  test('carrinho_id que NAO e o ativo (aba desatualizada) e recusado: nada e fechado', async () => {
     const { ana, endereco, gol } = await prepararDoisCarrinhos();
     const padrao = porNome((await ana.get('/api/carrinhos')).corpo.dados, 'Meu carrinho');
 
-    // O ativo e o Gol, mas a pessoa manda fechar o "Meu carrinho".
+    // O ativo e o Gol; a aba velha ainda achava que era o "Meu carrinho".
     const r = await ana.post('/api/pedidos', { endereco_id: endereco.id, carrinho_id: padrao.id });
-    assert.equal(r.status, 201);
-    assert.deepEqual(amb.erp.estado.pedidosCriados[0].itens, [{ codigo_produto: 'PEC-001', quantidade: 2 }]);
+
+    assert.equal(r.status, 409);
+    assert.equal(r.corpo.erro.codigo, 'CARRINHO_ATIVO_MUDOU');
+    assert.equal(amb.erp.estado.pedidosCriados.length, 0);
 
     const estado = (await ana.get('/api/carrinhos')).corpo.dados;
-    assert.deepEqual(nomes(estado), ['Gol']);
+    assert.equal(estado.carrinhos.length, 2, 'nenhum carrinho foi fechado');
     assert.equal(estado.id, gol.id);
   });
 
-  test('nao fecha carrinho de outra pessoa (404) e nao cria nada no ERP', async () => {
+  test('carrinho_id de outra pessoa tambem e recusado e nao cria nada no ERP', async () => {
     const { ana, gol } = await prepararDoisCarrinhos();
     const bia = await amb.novaPessoa();
     const enderecoBia = await amb.novoEndereco(bia);
+    await bia.post('/api/carrinho/itens', { codigo_produto: 'PEC-001' });
 
     const r = await bia.post('/api/pedidos', { endereco_id: enderecoBia.id, carrinho_id: gol.id });
-    assert.equal(r.status, 404);
+    assert.equal(r.status, 409);
     assert.equal(amb.erp.estado.pedidosCriados.length, 0);
     assert.ok(porNome((await ana.get('/api/carrinhos')).corpo.dados, 'Gol'), 'o carrinho da Ana segue la');
+    assert.equal((await bia.get('/api/carrinhos')).corpo.dados.itens.length, 1, 'e o da Bia tambem');
   });
 
   test('carrinho vazio e carrinho com pendencia sao recusados e destravam em seguida', async () => {
