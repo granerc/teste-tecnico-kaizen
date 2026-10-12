@@ -7,7 +7,7 @@ Kaizen.
 
 O SIAC é dono do catálogo, do estoque e dos pedidos, e roda fora deste projeto.
 Catálogo e pedidos **não existem aqui** — vêm do ERP por HTTP. Este repositório
-guarda apenas o que é da loja: contas, endereços e carrinho.
+guarda apenas o que é da loja: contas, endereços e carrinhos.
 
 ---
 
@@ -21,7 +21,7 @@ guarda apenas o que é da loja: contas, endereços e carrinho.
   └──────────┘    JSON      └─────┬──────┘     JSON       └────┬─────┘
                                   │                            │
                             ecommerce.db                   kaizen.db
-                    usuários · endereços · carrinho    produtos · pedidos
+                    usuários · endereços · carrinhos   produtos · pedidos
 ```
 
 Três decisões que seguem desse desenho:
@@ -98,12 +98,18 @@ Tudo sob `/api`. Erros seguem o mesmo formato do ERP:
 | POST   | `/enderecos`                |   ✓    | Cadastra endereço                |
 | PUT    | `/enderecos/:id`            |   ✓    | Edita endereço                   |
 | DELETE | `/enderecos/:id`            |   ✓    | Remove endereço                  |
-| GET    | `/carrinho`                 |   ✓    | Carrinho com preço/estoque atual |
-| POST   | `/carrinho/itens`           |   ✓    | Adiciona item                    |
-| PATCH  | `/carrinho/itens/:codigo`   |   ✓    | Muda a quantidade                |
-| DELETE | `/carrinho/itens/:codigo`   |   ✓    | Remove item                      |
-| DELETE | `/carrinho`                 |   ✓    | Esvazia                          |
-| POST   | `/pedidos`                  |   ✓    | **Checkout**                     |
+| GET    | `/carrinhos`                |   ✓    | Estado do app: conteúdo do carrinho **ativo** + resumo de todos |
+| POST   | `/carrinhos`                |   ✓    | Cria um carrinho (já fica ativo) |
+| GET    | `/carrinhos/:id`            |   ✓    | Conteúdo de um carrinho (só leitura) |
+| PATCH  | `/carrinhos/:id`            |   ✓    | Renomeia                         |
+| POST   | `/carrinhos/:id/ativar`     |   ✓    | Troca o carrinho ativo           |
+| DELETE | `/carrinhos/:id`            |   ✓    | Exclui (e os itens dele)         |
+| POST   | `/carrinhos/:id/itens`      |   ✓    | Adiciona item                    |
+| PATCH  | `/carrinhos/:id/itens/:codigo` | ✓   | Muda a quantidade                |
+| DELETE | `/carrinhos/:id/itens/:codigo` | ✓   | Remove item                      |
+| DELETE | `/carrinhos/:id/itens`      |   ✓    | Esvazia (o carrinho continua)    |
+| *      | `/carrinho/...`             |   ✓    | Atalho do contrato antigo: mesmas rotas, agindo no carrinho **ativo** |
+| POST   | `/pedidos`                  |   ✓    | **Checkout** do carrinho ativo (`carrinho_id` opcional, como trava) |
 | GET    | `/pedidos`                  |   ✓    | Meus pedidos                     |
 | GET    | `/pedidos/:numero`          |   ✓    | Detalhe do pedido                |
 
@@ -125,11 +131,11 @@ pessoa precisa ver.
 
 | Rota                | Sessão | O que tem                                        |
 | ------------------- | :----: | ------------------------------------------------ |
-| `/`                 |   —    | Vitrine: busca, filtro por categoria, paginação   |
+| `/`                 |   —    | Vitrine: busca, filtro por categoria, paginação; com sessão, o carrinho ativo ao lado (desktop) ou na gaveta (celular) |
 | `/produto/:codigo`  |   —    | Detalhe, escolha de quantidade                   |
 | `/entrar`           |   —    | Login                                            |
 | `/cadastro`         |   —    | Criar conta                                      |
-| `/carrinho`         |   ✓    | Alterar quantidade, remover, esvaziar            |
+| `/carrinho`         |   ✓    | Trocar/criar/renomear/excluir carrinho, alterar quantidade, remover, esvaziar |
 | `/checkout`         |   ✓    | Escolher endereço (ou criar na hora), observação |
 | `/pedidos`          |   ✓    | Histórico com status vindo do ERP                |
 | `/pedidos/:numero`  |   ✓    | Itens, endereço e valores                        |
@@ -204,10 +210,17 @@ como alerta. Os dois usam o tom 700, que passa em contraste.
 ## Regras de negócio que valem conhecer
 
 - **Carrinho fica no servidor**, não no `localStorage`: trocar de navegador ou de
-  celular mantém o que a pessoa escolheu.
-- **Preço nunca congela no carrinho.** Guardamos só código e quantidade; preço,
-  estoque e descrição são lidos do ERP a cada leitura. Item que ficou sem estoque
-  aparece marcado em vez de quebrar a tela.
+  celular mantém o que a pessoa escolheu — inclusive qual carrinho estava ativo.
+- **Vários carrinhos, um ativo.** Cada pessoa tem até 10 carrinhos nomeados. O
+  ativo é o que a vitrine mostra e o que o checkout fecha. O banco garante "no
+  máximo um ativo por pessoa" com um índice único parcial, e a API nunca deixa a
+  pessoa sem carrinho ativo. Detalhes e decisões em [RELATORIO.md](RELATORIO.md).
+- **Os itens pertencem ao carrinho, não à pessoa** (`carrinho_itens.carrinho_id`).
+  Não existe consulta de item que não passe por um carrinho antes conferido como
+  sendo da pessoa; carrinho alheio responde 404, igual a carrinho inexistente.
+- **Checkout fecha só o carrinho ativo** e reserva ele de forma atômica enquanto o
+  pedido sai: dois "Confirmar" ao mesmo tempo geram um pedido só. Os outros
+  carrinhos ficam como estavam.
 - **Checkout bloqueia com pendência.** Se algum item perdeu estoque, o botão
   trava até ajustar.
 - **Endereço vai no snapshot do pedido.** O ERP não tem campo de entrega (vai na
@@ -228,18 +241,20 @@ backend/
     server.js            bootstrap, graceful shutdown
     app.js               montagem do Express
     config.js            env + validação fail-fast
-    db/                  schema e conexão SQLite
+    db/                  schema, conexão SQLite e migrações
     erp/cliente.js       ÚNICO ponto que fala com o ERP
     middleware/          sessão JWT, request-id, erros
     routes/              HTTP: lê, chama o serviço, devolve JSON
     services/            regra de negócio
     lib/                 erros, validação, senha, dinheiro
+  test/                  node:test, com ERP falso (nunca toca o ERP real)
 frontend/
   src/
     api/cliente.js       fetch + tradução de erro
-    contextos/           sessão e carrinho
-    componentes/         UI compartilhada
+    contextos/           sessão e carrinhos
+    componentes/         UI compartilhada (painel e gaveta do carrinho, seletor)
     paginas/             uma por rota
+  test/                  vitest + Testing Library, com servidor falso
 ```
 
 Todo acesso ao ERP passa por `erp/cliente.js`. Trocar a URL, o modo de
@@ -255,8 +270,9 @@ Decisões de escopo assumidas pelo time, não esquecimentos:
   de frete nem emissão de nota.
 - **Sem recuperação de senha.** Precisa de envio de e-mail.
 - **Sem confirmação de e-mail** no cadastro, pelo mesmo motivo.
-- **Sem testes automatizados.** Uma suíte com `node:test` cobrindo login, posse
-  de pedido/endereço e o checkout com estoque insuficiente seria o primeiro passo.
+- **Testes cobrem o que foi mexido, não o projeto todo.** Backend (`npm test`):
+  carrinhos, checkout, migração e as correções. Frontend (`npm test`): painel,
+  vitrine e os chamados. Login, cadastro e perfil têm pouca cobertura.
 - **Checkout não é transacional entre os dois sistemas.** Se o ERP criar o pedido
   e a gravação local falhar, o pedido existe mas não aparece em "meus pedidos".
   O log registra o número para reconciliar à mão; resolver de verdade pede um
