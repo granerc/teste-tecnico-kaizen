@@ -89,8 +89,10 @@ export async function lerCarrinho(usuarioId, db = obterBanco()) {
 
   return {
     itens,
+    // Linhas (produtos diferentes) vs. pecas (soma das unidades): o contador do
+    // cabecalho e o resumo do carrinho mostram pecas.
     quantidade_itens: itens.length,
-    quantidade_pecas: itens.length,
+    quantidade_pecas: itens.reduce((soma, item) => soma + item.quantidade, 0),
     valor_total: paraReais(totalCentavos),
     pronto_para_checkout: itens.length > 0 && itens.every((item) => item.disponivel),
   };
