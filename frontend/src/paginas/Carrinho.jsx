@@ -63,8 +63,15 @@ function LinhaItem({ item, aoAlterar, aoRemover, ocupado }) {
         </div>
       </div>
 
-      <p className="shrink-0 text-right text-sm font-bold text-tinta-900">
-        {dinheiro.format(item.valor_total)}
+      <p
+        className={`shrink-0 text-right text-sm font-bold ${
+          item.disponivel ? 'text-tinta-900' : 'text-tinta-500'
+        }`}
+      >
+        <span className={item.disponivel ? '' : 'line-through'}>
+          {dinheiro.format(item.valor_total)}
+        </span>
+        {!item.disponivel && <span className="block text-xs font-normal">fora do total</span>}
       </p>
     </li>
   );
