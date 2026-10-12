@@ -22,6 +22,11 @@ rotasImagens.get('/:arquivo', async (req, res) => {
 
   res.setHeader('Content-Type', tipo);
   res.setHeader('Cache-Control', 'public, max-age=604800');
+  // SVG pode carregar script. Dentro de <img> ele nunca executa, mas aberto
+  // direto na URL da loja executaria na origem da loja (onde vive a sessao).
+  // O sandbox e o nosniff tiram esse risco caso o ERP um dia sirva um SVG ruim.
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
 
   fluxo.pipe(res);
 });

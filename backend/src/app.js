@@ -22,10 +22,12 @@ export function criarApp() {
   app.set('trust proxy', true);
   app.disable('x-powered-by');
 
-  // O front roda em outra porta durante o desenvolvimento e estava dando erro
-  // de CORS no preflight. Refletir a origem da requisicao resolve em qualquer
-  // porta, sem precisar ficar ajustando a lista a cada ambiente.
-  app.use(cors({ origin: true, credentials: true }));
+  // So as origens da lista CORS_ORIGEM podem chamar a API com cookie. Refletir
+  // qualquer origem com credentials:true deixaria um site de terceiros ler
+  // respostas autenticadas do cliente logado. No uso normal (proxy do Vite em
+  // desenvolvimento, backend servindo o build em producao) front e API ja sao a
+  // mesma origem e o CORS nem entra em jogo.
+  app.use(cors({ origin: config.corsOrigens, credentials: true }));
 
   app.use(identificarRequisicao);
   app.use(registrarAcesso);
