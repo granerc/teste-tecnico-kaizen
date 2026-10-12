@@ -84,7 +84,9 @@ export function atualizarPerfil(usuarioId, { nome, telefone, documento }, db = o
      WHERE id = ?
   `).run(
     nome ?? atual.nome,
-    telefone || atual.telefone,
+    // null apaga o telefone; so undefined mantem o atual. O `||` anterior
+    // tratava "apagar" como "nao enviado" e o numero nunca saia.
+    telefone === undefined ? atual.telefone : telefone,
     documento ?? atual.documento,
     agoraISO(),
     usuarioId,
