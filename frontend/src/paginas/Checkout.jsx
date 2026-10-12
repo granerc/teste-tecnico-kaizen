@@ -50,9 +50,10 @@ export function Checkout() {
     setEnviando(true);
 
     try {
-      // Entrega vai para o endereco principal do cliente.
-      const entrega = enderecos.find((item) => item.principal) ?? enderecos[0];
-      const resposta = await api.pedidos.criar({ endereco_id: entrega?.id, observacao });
+      // O endereco que a pessoa escolheu na tela (KZN-331). Antes isto procurava
+      // o endereco principal e ignorava a escolha: quem marcava "Oficina" e
+      // tinha "Casa" como principal via o pedido sair para a casa.
+      const resposta = await api.pedidos.criar({ endereco_id: enderecoId, observacao });
       await recarregar();
       navegar(`/pedidos/${resposta.dados.numero}`, { replace: true, state: { novo: true } });
     } catch (falha) {
@@ -64,6 +65,8 @@ export function Checkout() {
       setEnviando(false);
     }
   }
+
+  const enderecoSelecionado = enderecos.find((item) => item.id === enderecoId) ?? null;
 
   if (carregando || carregandoCarrinho) return <Carregando texto="Preparando o checkout..." />;
 
@@ -186,6 +189,14 @@ export function Checkout() {
               {dinheiro.format(carrinho.valor_total)}
             </span>
           </div>
+
+          {enderecoSelecionado && (
+            <p className="mt-4 text-sm text-tinta-600">
+              Entrega em <strong className="text-tinta-900">{enderecoSelecionado.apelido}</strong>
+              {' — '}
+              {enderecoSelecionado.logradouro}, {enderecoSelecionado.numero}
+            </p>
+          )}
 
           {!carrinho.pronto_para_checkout && (
             <Alerta tipo="aviso" className="mt-4">
