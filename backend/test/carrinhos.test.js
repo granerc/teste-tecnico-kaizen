@@ -299,6 +299,18 @@ describe('itens', () => {
   });
 });
 
+describe('contrato antigo (/api/carrinho)', () => {
+  test('DELETE /api/carrinho esvazia o ativo, como antes', async () => {
+    const ana = await amb.novaPessoa();
+    await ana.post('/api/carrinho/itens', { codigo_produto: 'PEC-001' });
+    const r = await ana.delete('/api/carrinho');
+
+    assert.equal(r.status, 200);
+    assert.equal(r.corpo.dados.itens.length, 0);
+    assert.equal(r.corpo.dados.carrinhos.length, 1);
+  });
+});
+
 describe('checkout: fecha so o carrinho escolhido', () => {
   async function prepararDoisCarrinhos() {
     const ana = await amb.novaPessoa('Ana Souza');

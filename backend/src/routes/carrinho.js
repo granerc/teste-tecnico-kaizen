@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { autenticar } from '../middleware/autenticacao.js';
-import { garantirCarrinhoAtivo, lerCarrinho } from '../services/carrinhoService.js';
+import { esvaziarCarrinho, garantirCarrinhoAtivo, lerCarrinho } from '../services/carrinhoService.js';
 import { registrarRotasDeItens } from './itensCarrinho.js';
 
 /**
@@ -17,3 +17,9 @@ rotasCarrinho.get('/', async (req, res) => {
 });
 
 registrarRotasDeItens(rotasCarrinho, (req) => garantirCarrinhoAtivo(req.usuario.id).id);
+
+// Contrato antigo: DELETE /api/carrinho esvazia o carrinho (agora, o ativo).
+rotasCarrinho.delete('/', async (req, res) => {
+  esvaziarCarrinho(req.usuario.id, garantirCarrinhoAtivo(req.usuario.id).id);
+  res.json({ dados: await lerCarrinho(req.usuario.id) });
+});

@@ -53,7 +53,13 @@ export function Checkout() {
       // O endereco que a pessoa escolheu na tela (KZN-331). Antes isto procurava
       // o endereco principal e ignorava a escolha: quem marcava "Oficina" e
       // tinha "Casa" como principal via o pedido sair para a casa.
-      const resposta = await api.pedidos.criar({ endereco_id: enderecoId, observacao });
+      // carrinho_id explicito: fecha o carrinho que a pessoa ESTAVA vendo, mesmo
+      // que o ativo tenha mudado em outra aba enquanto ela escolhia o endereco.
+      const resposta = await api.pedidos.criar({
+        endereco_id: enderecoId,
+        observacao,
+        carrinho_id: carrinho.id,
+      });
       await recarregar();
       navegar(`/pedidos/${resposta.dados.numero}`, { replace: true, state: { novo: true } });
     } catch (falha) {
@@ -82,7 +88,14 @@ export function Checkout() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-tinta-900">Fechar pedido</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-tinta-900">Fechar pedido</h1>
+        <p className="mt-1 text-sm text-tinta-600">
+          Carrinho <strong className="text-tinta-900">{carrinho.nome}</strong>
+          {carrinho.carrinhos.length > 1 &&
+            ` · seus outros ${carrinho.carrinhos.length - 1} carrinhos continuam salvos`}
+        </p>
+      </div>
 
       <ErroGeral erro={erro} camposConhecidos={[]} />
 

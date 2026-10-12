@@ -61,7 +61,7 @@ export function Cabecalho() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-tinta-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-x-4 px-4 py-3">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <Link to="/" className="flex items-center gap-2 text-lg font-bold text-tinta-900">
           {/* O K e grande e bold, entao 3:1 basta e o quadrado pode levar o
               #00a5ac exato - e onde a marca mais aparece. */}
@@ -74,7 +74,9 @@ export function Cabecalho() {
           </span>
         </Link>
 
-        <form onSubmit={pesquisar} className="min-w-[380px] flex-1">
+        {/* Antes: min-w-[380px] fixo, que estourava a tela no celular. Agora a busca
+            desce para uma linha propria no celular e volta ao lado do logo em sm+. */}
+        <form onSubmit={pesquisar} className="order-last w-full sm:order-none sm:w-auto sm:min-w-[240px] sm:flex-1 lg:min-w-[380px]">
           <label htmlFor="busca-topo" className="sr-only">
             Buscar peças
           </label>
@@ -98,6 +100,7 @@ export function Cabecalho() {
 
               <Link
                 to="/carrinho"
+                title={carrinho.nome ? `Carrinho ativo: ${carrinho.nome}` : undefined}
                 className="relative rounded-lg px-3 py-2 text-sm font-medium text-tinta-600 hover:bg-tinta-100"
               >
                 Carrinho
@@ -105,7 +108,7 @@ export function Cabecalho() {
                   <span
                     className="absolute -right-0.5 -top-0.5 grid size-5 place-items-center
                       rounded-full bg-marca-700 text-[11px] font-bold text-white"
-                    aria-label={`${carrinho.quantidade_pecas} itens no carrinho`}
+                    aria-label={`${carrinho.quantidade_pecas} peças no carrinho ${carrinho.nome}`}
                   >
                     {carrinho.quantidade_pecas > 99 ? '99+' : carrinho.quantidade_pecas}
                   </span>
