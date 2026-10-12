@@ -74,10 +74,28 @@ export function Catalogo() {
       if (valor === null || valor === '' || valor === false) proximos.delete(chave);
       else proximos.set(chave, String(valor));
 
+      // Mudou busca, categoria ou filtro: volta para a primeira pagina. A pagina
+      // N da listagem antiga nao existe na nova (KZN-325: "amortecedor" tem uma
+      // pagina so, e a URL ainda pedia a 5).
+      if (chave !== 'pagina') proximos.delete('pagina');
+
       setParametros(proximos);
     },
     [parametros, setParametros],
   );
+
+  // Link antigo ou compartilhado com pagina alem do fim: vai para a ultima que
+  // existe, em vez de dizer "nenhuma peca" quando ha resultados.
+  useEffect(() => {
+    if (carregando || !paginacao) return;
+
+    if (paginacao.total > 0 && pagina > paginacao.total_paginas) {
+      const proximos = new URLSearchParams(parametros);
+      if (paginacao.total_paginas > 1) proximos.set('pagina', String(paginacao.total_paginas));
+      else proximos.delete('pagina');
+      setParametros(proximos, { replace: true });
+    }
+  }, [carregando, paginacao, pagina, parametros, setParametros]);
 
   async function adicionarAoCarrinho(produto) {
     if (!autenticado) {
