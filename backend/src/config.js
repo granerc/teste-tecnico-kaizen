@@ -11,13 +11,9 @@ const raizProjeto = path.resolve(fileURLToPath(new URL('../', import.meta.url)))
  * resumo de entrega - queremos saber que partes do projeto foram lidas de fato.
  */
 
-// Valores usados quando nao ha .env, para a aplicacao subir logo depois do
-// clone sem ninguem precisar configurar nada.
-const PADRAO = {
-  jwtSegredo: 'JWT_SEGREDO_REMOVIDO_DO_HISTORICO',
-  erpUrl: 'https://teste-tecnico.kaizenautopecas.com.br',
-  erpToken: 'ERP_TOKEN_REMOVIDO_DO_HISTORICO',
-};
+// Segredo e token NAO tem valor padrao no codigo: o que esta no codigo vai para
+// o git, e quem clonar o repositorio passaria a assinar sessoes com o mesmo
+// segredo de todo mundo. Sem configuracao, validarConfig() derruba a subida.
 
 function resolverCaminho(bruto, padrao) {
   const valor = bruto?.trim() || padrao;
@@ -33,18 +29,22 @@ export const config = {
   caminhoBanco: resolverCaminho(process.env.DB_PATH, './data/ecommerce.db'),
 
   jwt: {
-    segredo: process.env.JWT_SEGREDO?.trim() || PADRAO.jwtSegredo,
+    segredo: process.env.JWT_SEGREDO?.trim() ?? '',
     expiracao: process.env.JWT_EXPIRACAO?.trim() || '7d',
     nomeCookie: 'kaizen_sessao',
   },
 
   erp: {
-    url: (process.env.ERP_URL?.trim() || PADRAO.erpUrl).replace(/\/+$/, ''),
-    token: process.env.ERP_TOKEN?.trim() || PADRAO.erpToken,
+    url: (process.env.ERP_URL?.trim() ?? '').replace(/\/+$/, ''),
+    token: process.env.ERP_TOKEN?.trim() ?? '',
     timeoutMs: Number(process.env.ERP_TIMEOUT_MS ?? 8000),
   },
 
-  corsOrigem: process.env.CORS_ORIGEM?.trim() || 'http://localhost:5173',
+  // Lista separada por virgula. Qualquer origem fora dela e recusada no CORS.
+  corsOrigens: (process.env.CORS_ORIGEM?.trim() || 'http://localhost:5173')
+    .split(',')
+    .map((origem) => origem.trim().replace(/\/+$/, ''))
+    .filter(Boolean),
 
   paginacao: { tamanhoPadrao: 24, tamanhoMaximo: 100 },
 };
@@ -64,6 +64,8 @@ export function validarConfig() {
 
   if (!config.erp.token) {
     problemas.push('ERP_TOKEN nao definido. Use o API_TOKEN do kaizen-erp.');
+  } else if (config.erp.token.startsWith('cole-aqui')) {
+    problemas.push('ERP_TOKEN ainda esta com o valor de exemplo.');
   }
 
   if (!/^https?:\/\//.test(config.erp.url)) {
