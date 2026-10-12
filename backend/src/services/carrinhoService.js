@@ -82,10 +82,12 @@ export async function lerCarrinho(usuarioId, db = obterBanco()) {
 
   const itens = await enriquecerItens(linhas);
 
-  const totalCentavos = itens.reduce(
-    (soma, item) => soma + paraCentavos(item.valor_total),
-    0,
-  );
+  // So entra no total o que da para comprar. Linha sem estoque, parcial ou
+  // fora de linha continua visivel (com o motivo), mas o cliente nao pode
+  // fecha-la: somar o valor dela inflava o total (KZN-312).
+  const totalCentavos = itens
+    .filter((item) => item.disponivel)
+    .reduce((soma, item) => soma + paraCentavos(item.valor_total), 0);
 
   return {
     itens,
