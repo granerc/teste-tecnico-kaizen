@@ -103,18 +103,29 @@ export const api = {
     produto: (codigo) => requisitar(`/catalogo/${encodeURIComponent(codigo)}`),
   },
 
-  carrinho: {
-    ler: () => requisitar('/carrinho'),
-    adicionar: (codigo_produto, quantidade = 1) =>
-      requisitar('/carrinho/itens', { metodo: 'POST', corpo: { codigo_produto, quantidade } }),
-    alterar: (codigo, quantidade) =>
-      requisitar(`/carrinho/itens/${encodeURIComponent(codigo)}`, {
+  // Varios carrinhos por pessoa, UM ativo. Toda resposta devolve o estado
+  // completo (conteudo do ativo + resumo de todos), entao o front troca o
+  // estado inteiro a cada resposta.
+  carrinhos: {
+    ler: () => requisitar('/carrinhos'),
+    criar: (nome) => requisitar('/carrinhos', { metodo: 'POST', corpo: { nome } }),
+    renomear: (id, nome) => requisitar(`/carrinhos/${id}`, { metodo: 'PATCH', corpo: { nome } }),
+    ativar: (id) => requisitar(`/carrinhos/${id}/ativar`, { metodo: 'POST' }),
+    excluir: (id) => requisitar(`/carrinhos/${id}`, { metodo: 'DELETE' }),
+
+    adicionar: (id, codigo_produto, quantidade = 1) =>
+      requisitar(`/carrinhos/${id}/itens`, {
+        metodo: 'POST',
+        corpo: { codigo_produto, quantidade },
+      }),
+    alterar: (id, codigo, quantidade) =>
+      requisitar(`/carrinhos/${id}/itens/${encodeURIComponent(codigo)}`, {
         metodo: 'PATCH',
         corpo: { quantidade },
       }),
-    remover: (codigo) =>
-      requisitar(`/carrinho/itens/${encodeURIComponent(codigo)}`, { metodo: 'DELETE' }),
-    limpar: () => requisitar('/carrinho', { metodo: 'DELETE' }),
+    remover: (id, codigo) =>
+      requisitar(`/carrinhos/${id}/itens/${encodeURIComponent(codigo)}`, { metodo: 'DELETE' }),
+    esvaziar: (id) => requisitar(`/carrinhos/${id}/itens`, { metodo: 'DELETE' }),
   },
 
   pedidos: {

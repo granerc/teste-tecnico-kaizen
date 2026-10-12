@@ -19,7 +19,9 @@ rotasPedidos.use(autenticar);
 
 /**
  * POST /api/pedidos - checkout.
- * Pega o carrinho do usuario, manda para o ERP e limpa o carrinho.
+ * Fecha o carrinho ATIVO, manda para o ERP e encerra so esse carrinho; os outros
+ * continuam como estavam. `carrinho_id` (opcional) e uma trava: se nao for o
+ * ativo, responde 409 CARRINHO_ATIVO_MUDOU em vez de fechar outro carrinho.
  */
 rotasPedidos.post('/', async (req, res) => {
   const corpo = exigirObjeto(req.body);
@@ -27,10 +29,13 @@ rotasPedidos.post('/', async (req, res) => {
 
   const enderecoId = inteiroPositivo(corpo.endereco_id, 'endereco_id', erros, { max: 1e9 });
   const observacao = textoOpcional(corpo.observacao, 'observacao', erros, { max: 300 });
+  const carrinhoId = corpo.carrinho_id == null
+    ? null
+    : inteiroPositivo(corpo.carrinho_id, 'carrinho_id', erros, { max: 1e9 });
 
   erros.lancarSeInvalido('Nao foi possivel fechar o pedido.');
 
-  const pedido = await finalizarPedido(req.usuario, enderecoId, observacao);
+  const pedido = await finalizarPedido(req.usuario, enderecoId, observacao, carrinhoId);
 
   res.status(201).location(`/api/pedidos/${pedido.numero}`).json({ dados: pedido });
 });

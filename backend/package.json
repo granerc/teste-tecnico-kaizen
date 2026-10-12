@@ -4,13 +4,16 @@
   "description": "BFF do e-commerce de autopecas - consome a API do Kaizen ERP",
   "type": "module",
   "main": "src/server.js",
-  "engines": { "node": ">=20.0.0" },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "db:init": "node scripts/init-db.js",
     "db:reset": "node scripts/init-db.js --reset",
-    "segredo:gerar": "node -e \"console.log(require('node:crypto').randomBytes(48).toString('hex'))\""
+    "segredo:gerar": "node -e \"console.log(require('node:crypto').randomBytes(48).toString('hex'))\"",
+    "test": "node --test"
   },
   "dependencies": {
     "better-sqlite3": "^12.2.0",

@@ -19,6 +19,14 @@ export default defineConfig({
       },
     },
   },
+  // Testes de interface: jsdom simula o navegador; o fetch e trocado por um
+  // servidor falso em cada teste (test/ajudas.jsx), entao nada sai da maquina.
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./test/setup.js'],
+    globals: true,
+    css: false,
+  },
   build: {
     outDir: 'dist',
     sourcemap: false,

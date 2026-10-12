@@ -41,19 +41,46 @@ CREATE TABLE IF NOT EXISTS enderecos (
 
 CREATE INDEX IF NOT EXISTS idx_enderecos_usuario ON enderecos (usuario_id);
 
--- Carrinho persistido: o cliente fecha o navegador e encontra tudo de volta.
--- Guarda so o codigo do produto; preco e descricao vem do ERP na hora de ler,
--- entao o carrinho nunca mostra preco velho.
-CREATE TABLE IF NOT EXISTS carrinho_itens (
+-- Carrinhos persistidos: o cliente fecha o navegador e encontra tudo de volta.
+-- Uma pessoa pode ter varios (uma oficina monta o orcamento do Gol e, em
+-- paralelo, o do Civic), mas so UM e o ativo: e o que a vitrine mostra e o que o
+-- checkout fecha.
+CREATE TABLE IF NOT EXISTS carrinhos (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   usuario_id     INTEGER NOT NULL REFERENCES usuarios (id) ON DELETE CASCADE,
+  -- NOCASE: "Gol do Joao" e "gol do joao" sao o mesmo nome para a pessoa.
+  nome           TEXT    NOT NULL COLLATE NOCASE,
+  ativo          INTEGER NOT NULL DEFAULT 0 CHECK (ativo IN (0, 1)),
+  -- Reserva do checkout: preenchido enquanto o pedido esta sendo criado no ERP.
+  -- E um instante (nao um booleano) para a reserva expirar sozinha se o processo
+  -- cair no meio e nao deixar o carrinho travado para sempre.
+  fechando_desde TEXT,
+  criado_em      TEXT    NOT NULL,
+  atualizado_em  TEXT    NOT NULL,
+  UNIQUE (usuario_id, nome)
+);
+
+CREATE INDEX IF NOT EXISTS idx_carrinhos_usuario ON carrinhos (usuario_id);
+
+-- Indice unico PARCIAL: no maximo um carrinho ativo por usuario, garantido pelo
+-- banco (nao so pelo codigo). Trocar de carrinho e desmarcar o antigo e marcar o
+-- novo na mesma transacao.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_carrinhos_um_ativo
+  ON carrinhos (usuario_id) WHERE ativo = 1;
+
+-- Os itens pertencem ao CARRINHO, nao ao usuario: e isso que impede um carrinho
+-- de vazar para outro. Guarda so o codigo do produto; preco e descricao vem do
+-- ERP na hora de ler, entao o carrinho nunca mostra preco velho.
+CREATE TABLE IF NOT EXISTS carrinho_itens (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  carrinho_id    INTEGER NOT NULL REFERENCES carrinhos (id) ON DELETE CASCADE,
   codigo_produto TEXT    NOT NULL,
   quantidade     INTEGER NOT NULL CHECK (quantidade > 0),
   adicionado_em  TEXT    NOT NULL,
-  UNIQUE (usuario_id, codigo_produto)
+  UNIQUE (carrinho_id, codigo_produto)
 );
 
-CREATE INDEX IF NOT EXISTS idx_carrinho_usuario ON carrinho_itens (usuario_id);
+CREATE INDEX IF NOT EXISTS idx_carrinho_itens_carrinho ON carrinho_itens (carrinho_id);
 
 -- Vinculo com o pedido que vive no ERP.
 -- `endereco_entrega` e um snapshot em JSON: o ERP nao tem esse dado, e se o
