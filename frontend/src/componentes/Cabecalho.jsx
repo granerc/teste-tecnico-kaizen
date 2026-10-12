@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contextos/AuthContext.jsx';
 import { useCarrinho } from '../contextos/CarrinhoContext.jsx';
@@ -29,18 +29,29 @@ export function Cabecalho() {
   const { carrinho } = useCarrinho();
   const navegar = useNavigate();
   const [parametros] = useSearchParams();
-  const [busca, setBusca] = useState(parametros.get('busca') ?? '');
+  const buscaNaUrl = parametros.get('busca') ?? '';
+  const [busca, setBusca] = useState(buscaNaUrl);
+
+  // O campo acompanha a URL: "limpar", voltar do navegador ou um link com outra
+  // busca nao podem deixar o termo antigo escrito na caixa.
+  useEffect(() => {
+    setBusca(buscaNaUrl);
+  }, [buscaNaUrl]);
 
   function pesquisar(evento) {
     evento.preventDefault();
     const termo = busca.trim();
 
-    // Preserva os filtros que ja estavam aplicados na vitrine.
-    const atuais = new URLSearchParams(window.location.search);
+    // Preserva os filtros que ja estavam aplicados na vitrine...
+    const atuais = new URLSearchParams(parametros);
     if (termo) atuais.set('busca', termo);
     else atuais.delete('busca');
 
-    navegar(`/?${atuais.toString()}`);
+    // ...menos a pagina: pesquisar recomeca da primeira (KZN-325).
+    atuais.delete('pagina');
+
+    const texto = atuais.toString();
+    navegar(texto ? `/?${texto}` : '/');
   }
 
   async function encerrarSessao() {
