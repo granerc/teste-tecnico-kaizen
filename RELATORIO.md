@@ -1,7 +1,7 @@
 # Relatório de entrega
 
 **Candidato:** Camila Graner
-**Data de entrega:** 12/10/2026
+**Data de entrega:** 13/10/2026
 **Tempo aproximado dedicado:** _[preencher]_
 
 Resumo em cinco linhas:
@@ -16,12 +16,13 @@ Resumo em cinco linhas:
 
 ## 1. Subindo o projeto
 
-**Como subi:** `npm install` em `backend/` e em `frontend/`; copiei `backend/.env.example` para `backend/.env` e preenchi; `npm start` no backend (porta 3001) e `npm run dev` no frontend (porta 5173, o Vite faz proxy de `/api`). O banco é criado sozinho na subida.
+**Como subi:** `npm install` em `backend/` e em `frontend/`; copiei `backend/.env.example` para `backend/.env` e preenchi `ERP_URL`, `ERP_TOKEN` e `JWT_SEGREDO` (gerado com `npm run segredo:gerar`); `npm run dev` (ou `npm start`) no backend (porta 3001) e `npm run dev` no frontend (porta 5173, o Vite faz proxy de `/api`). O banco é criado sozinho na subida (o `npm run db:init` é opcional).
 
 **O que foi confuso:**
 
 1. O enunciado me deu `SIAC_URL` e `SIAC_TOKEN`, mas o projeto lê `ERP_URL` e `ERP_TOKEN`. Só descobri lendo o `config.js`. Mesma coisa, nomes diferentes.
-2. O projeto **subia sem nenhuma configuração**, porque o código tinha valores padrão com o token e o segredo. Isso parece conveniente e é o problema nº 1 da seção 3.
+2. Sem `JWT_SEGREDO` válido (mínimo 32 caracteres) o servidor agora **se recusa a subir**, de propósito. Quem copia o `.env.example` e não preenche vê `JWT_SEGREDO muito curto`.
+3. O projeto **subia sem nenhuma configuração**, porque o código tinha valores padrão com o token e o segredo. Isso parece conveniente e é o problema nº 1 da seção 3.
 
 **Arquivos que criei e não estavam no repositório:** `backend/.env` (local, ignorado pelo git, com o token) e o `.gitignore` da raiz (o repositório não tinha, e versionava o banco e o build).
 
