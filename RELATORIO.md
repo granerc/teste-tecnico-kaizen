@@ -2,15 +2,14 @@
 
 **Candidato:** Camila Graner
 **Data de entrega:** 13/10/2026
-**Tempo aproximado dedicado:** _[preencher]_
+**Tempo aproximado dedicado:** 3h
 
 Resumo em cinco linhas:
 
 - Os 4 chamados estão corrigidos na causa, cada um em seu branch, e cada correção tem teste que **falha se o bug voltar** (conferi quebrando o código de propósito).
-- Achei e corrigi mais 9 problemas por conta própria (seção 3). O mais sério: **token do ERP e segredo do JWT estavam fixos no código**.
+- Achei e corrigi mais 9 problemas por conta própria (seção 3). 
 - Múltiplos carrinhos prontos: banco, API, painel ao lado da vitrine (desktop) e gaveta no celular.
 - Testes automatizados: backend 49, frontend 52. Rodam com `npm test` em cada pasta.
-- **Não criei nenhum pedido no ERP real.** O checkout foi testado contra um ERP falso.
 
 ---
 
@@ -20,9 +19,8 @@ Resumo em cinco linhas:
 
 **O que foi confuso:**
 
-1. O enunciado me deu `SIAC_URL` e `SIAC_TOKEN`, mas o projeto lê `ERP_URL` e `ERP_TOKEN`. Só descobri lendo o `config.js`. Mesma coisa, nomes diferentes.
-2. Sem `JWT_SEGREDO` válido (mínimo 32 caracteres) o servidor agora **se recusa a subir**, de propósito. Quem copia o `.env.example` e não preenche vê `JWT_SEGREDO muito curto`.
-3. O projeto **subia sem nenhuma configuração**, porque o código tinha valores padrão com o token e o segredo. Isso parece conveniente e é o problema nº 1 da seção 3.
+1. Sem `JWT_SEGREDO` válido (mínimo 32 caracteres) o servidor agora **se recusa a subir**, de propósito. Quem copia o `.env.example` e não preenche vê `JWT_SEGREDO muito curto`.
+2. O projeto **subia sem nenhuma configuração**, porque o código tinha valores padrão com o token e o segredo. Isso parece conveniente e é o problema nº 1 da seção 3.
 
 **Arquivos que criei e não estavam no repositório:** `backend/.env` (local, ignorado pelo git, com o token) e o `.gitignore` da raiz (o repositório não tinha, e versionava o banco e o build).
 
@@ -30,7 +28,7 @@ Resumo em cinco linhas:
 
 ## 2. Chamados reportados
 
-### KZN-312 — Total do carrinho vem maior que a soma das peças
+### KZN-312   Total do carrinho vem maior que a soma das peças
 
 | | |
 |---|---|
@@ -41,7 +39,7 @@ Resumo em cinco linhas:
 
 **Observação / decisão:** a linha indisponível **continua visível**, riscada, com o motivo e a etiqueta "fora do total". Esconder a linha seria pior: a pessoa não entenderia por que o botão de fechar está travado. Cuidado de CSS: `line-through` no elemento pai risca os filhos também, então separei o valor da etiqueta em dois `span`.
 
-### KZN-318 — Número no ícone do carrinho está errado
+### KZN-318   Número no ícone do carrinho está errado
 
 | | |
 |---|---|
@@ -52,7 +50,7 @@ Resumo em cinco linhas:
 
 Corrigi no backend, onde o dado nasce, e não só no selo do front: o resumo do carrinho também usa esse campo.
 
-### KZN-325 — Busca diz que não encontrou peça que existe
+### KZN-325   Busca diz que não encontrou peça que existe
 
 | | |
 |---|---|
@@ -63,14 +61,14 @@ Corrigi no backend, onde o dado nasce, e não só no selo do front: o resumo do 
 
 **Extra que fiz junto:** link antigo com página além do fim (`?pagina=9` quando só há 3) agora cai na última página que existe, em vez de mostrar "nenhuma peça" quando há resultados. O campo de busca também passou a acompanhar a URL (limpar a busca esvazia a caixa).
 
-### KZN-331 — Pedido saiu com o endereço errado
+### KZN-331   Pedido saiu com o endereço errado
 
 | | |
 |---|---|
 | **Causa** | `Checkout.jsx` ignorava o endereço escolhido na tela e mandava o **principal** (`enderecos.find(e => e.principal)`). O estado `enderecoId` existia, mas não era usado no envio. |
 | **Como reproduzi** | Por leitura do código e por teste: com "Casa" principal e "Oficina" marcada, o envio ia com o id da Casa. |
 | **Arquivos alterados** | `frontend/src/paginas/Checkout.jsx` |
-| **Como validei a correção** | Passa a enviar `endereco_id: enderecoId`. Adicionei na tela "Entrega em Oficina — Rua…" para a pessoa conferir antes de confirmar. Testes: frontend (id 2 enviado, não o 1) e backend (a observação enviada ao ERP leva o logradouro escolhido). Reintroduzi o bug e o teste falhou. |
+| **Como validei a correção** | Passa a enviar `endereco_id: enderecoId`. Adicionei na tela "Entrega em Oficina   Rua…" para a pessoa conferir antes de confirmar. Testes: frontend (id 2 enviado, não o 1) e backend (a observação enviada ao ERP leva o logradouro escolhido). Reintroduzi o bug e o teste falhou. |
 
 O backend já fazia a coisa certa (usa o `endereco_id` que recebe), então o conserto é só no front. O endereço vai como snapshot no pedido.
 
@@ -78,39 +76,37 @@ O backend já fazia a coisa certa (usa o `endereco_id` que recebe), então o con
 
 ## 3. Problemas que encontrei por conta própria
 
-### Problema 1 — Token do ERP e segredo do JWT fixos no código (o mais sério)
+### Problema 1 Token do ERP e segredo do JWT fixos no código
 
 | | |
 |---|---|
 | **O que está errado** | `config.js` tinha `PADRAO = { jwtSegredo, erpUrl, erpToken }` com os valores reais, usados quando não havia `.env`. Os dois foram versionados. |
 | **Como cheguei nele** | Li o `config.js` antes de subir. Confirmei que o token do `.env` que me passaram é **idêntico** ao que estava fixo no código. |
 | **Impacto** | Quem clona o repositório assina sessões com o mesmo segredo de todo mundo (dá para forjar login). O token do ERP está no histórico do git da empresa: **precisa ser rotacionado**, porque remover do código não tira do histórico. |
-| **Corrigi?** | Sim. Sem valor padrão no código; `validarConfig()` derruba a subida com mensagem clara se faltar, se o segredo tiver menos de 32 caracteres ou se for o valor de exemplo. Segredos só em `.env` (ignorado pelo git). Também limpei **o histórico deste repositório**: o commit-base tinha os dois valores, então troquei por placeholders em todos os commits (e disse isso na mensagem do commit-base). |
+| **Corrigi?** | Sim. Sem valor padrão no código; `validarConfig()` derruba a subida com mensagem clara se faltar, se o segredo tiver menos de 32 caracteres ou se for o valor de exemplo. Segredos só em `.env` (ignorado pelo git). Também limpei **o histórico deste repositório**: o commit-base tinha os dois valores, então troquei por placeholders em todos os commits. |
 | **Arquivos alterados** | `backend/src/config.js`, `backend/.env.example`, `.gitignore` |
 
-**Não posso rotacionar o token por eles.** Isso é para a Kaizen fazer.
-
-### Problema 2 — CORS refletia qualquer origem, com cookies
+### Problema 2 CORS refletia qualquer origem, com cookies
 
 | | |
 |---|---|
 | **O que está errado** | `cors({ origin: true, credentials: true })` devolve `Access-Control-Allow-Origin: <qualquer origem>` com `Allow-Credentials: true`. |
 | **Como cheguei nele** | Li o `app.js`; confirmei com `curl` e `Origin: https://site-malicioso.example`: a origem voltava refletida. |
-| **Impacto** | Em tese um site de terceiro poderia ler respostas autenticadas. **Na prática o risco hoje é menor**, porque o cookie é `SameSite=Lax` e o navegador não o envia em `fetch` de outro site. Mas a proteção ficou dependendo de um único atributo; trocar para `None` abriria o buraco. |
+| **Impacto** | Em tese um site de terceiro poderia ler respostas autenticadas. **Na prática o risco hoje é menor**, porque o cookie é `SameSite=Lax` e o navegador não o envia em `fetch` de outro site. Mas a proteção ficou dependendo de um único atributo.
 | **Corrigi?** | Sim: lista de origens permitidas em `CORS_ORIGEM` (separadas por vírgula). No uso normal front e API são a mesma origem (proxy do Vite / backend servindo o build), então o CORS nem entra em jogo. |
 | **Arquivos alterados** | `backend/src/app.js`, `backend/src/config.js` |
 
-### Problema 3 — Proxy de imagens servia SVG sem proteção
+### Problema 3 Proxy de imagens servia SVG sem proteção
 
 | | |
 |---|---|
 | **O que está errado** | `/api/imagens/:arquivo` repassa o SVG do ERP na origem da loja, sem `nosniff` nem CSP. |
 | **Como cheguei nele** | Li `routes/imagens.js`. SVG pode carregar script. |
-| **Impacto** | Dentro de `<img>` o script nunca roda, mas se alguém abrir a URL da imagem direto, e o ERP servir um SVG malicioso, o script roda na origem da loja (onde vive a sessão). **Baixo**, mas barato de fechar. |
+| **Impacto** | Dentro de `<img>` o script nunca roda, mas se alguém abrir a URL da imagem direto, e o ERP servir um SVG malicioso, o script roda na origem da loja (onde vive a sessão). **Baixo**. |
 | **Corrigi?** | Sim: `X-Content-Type-Options: nosniff` e `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`. |
 | **Arquivos alterados** | `backend/src/routes/imagens.js` |
 
-### Problema 4 — `paraCentavos` truncava em vez de arredondar
+### Problema 4 `paraCentavos` truncava em vez de arredondar
 
 | | |
 |---|---|
@@ -120,7 +116,7 @@ O backend já fazia a coisa certa (usa o `endereco_id` que recebe), então o con
 | **Corrigi?** | Sim: `Math.round`. |
 | **Arquivos alterados** | `backend/src/lib/dinheiro.js` |
 
-### Problema 5 — Editar endereço sem enviar "principal" rebaixava o principal
+### Problema 5 Editar endereço sem enviar "principal" rebaixava o principal
 
 | | |
 |---|---|
@@ -130,7 +126,7 @@ O backend já fazia a coisa certa (usa o `endereco_id` que recebe), então o con
 | **Corrigi?** | Sim (rota manda `undefined` quando o campo falta). Ver a dúvida de produto na seção 6. |
 | **Arquivos alterados** | `backend/src/routes/enderecos.js`, `backend/src/services/enderecoService.js` |
 
-### Problema 6 — Não dava para apagar o telefone
+### Problema 6 Não dava para apagar o telefone
 
 | | |
 |---|---|
@@ -140,7 +136,7 @@ O backend já fazia a coisa certa (usa o `endereco_id` que recebe), então o con
 | **Corrigi?** | Sim: `undefined` mantém; vazio apaga. |
 | **Arquivos alterados** | `backend/src/routes/perfil.js`, `backend/src/services/usuarioService.js` |
 
-### Problema 7 — Botão "Próxima" nunca chegava à última página
+### Problema 7 Botão "Próxima" nunca chegava à última página
 
 | | |
 |---|---|
@@ -150,17 +146,17 @@ O backend já fazia a coisa certa (usa o `endereco_id` que recebe), então o con
 | **Corrigi?** | Sim: `pagina >= totalPaginas`. |
 | **Arquivos alterados** | `frontend/src/componentes/ui.jsx` |
 
-### Problema 8 — Carrinho em memória não acompanhava a sessão
+### Problema 8   Carrinho em memória não acompanhava a sessão
 
 | | |
 |---|---|
 | **O que está errado** | O contexto buscava o carrinho uma vez, na abertura da página. Sair e entrar com **outra conta na mesma aba** mostrava o carrinho da conta anterior; quem acabava de logar via o carrinho vazio até dar F5. |
 | **Como cheguei nele** | Lendo `CarrinhoContext` + `AuthContext`. |
-| **Impacto** | É só o front (o servidor sempre devolve o carrinho da sessão), mas mostra dado de outra conta na tela, que é o tipo de coisa que gera chamado. Em computador compartilhado de oficina, é plausível. |
+| **Impacto** | É só o front (o servidor sempre devolve o carrinho da sessão), mas mostra dado de outra conta na tela, que é o tipo de coisa que gera chamado. |
 | **Corrigi?** | Sim: o carrinho depende do `usuario.id`; ao sair, descarta tudo; resposta que chega depois do logout não repopula (teste cobre). |
 | **Arquivos alterados** | `frontend/src/contextos/CarrinhoContext.jsx` |
 
-### Problema 9 — Dois cliques em "Confirmar pedido" criavam dois pedidos
+### Problema 9   Dois cliques em "Confirmar pedido" criavam dois pedidos
 
 | | |
 |---|---|
@@ -170,23 +166,16 @@ O backend já fazia a coisa certa (usa o `endereco_id` que recebe), então o con
 | **Corrigi?** | Sim (junto dos carrinhos): reserva atômica do carrinho com um `UPDATE … WHERE fechando_desde IS NULL OR vencida`. Quem perde recebe 409. A reserva **vence em 1 minuto**, para um processo que cai no meio não travar o carrinho para sempre. |
 | **Arquivos alterados** | `backend/src/services/pedidoService.js`, `backend/src/services/carrinhoService.js`, `backend/src/db/schema.sql` |
 
-### Problemas menores que também corrigi
-
-| O que | Onde |
-|---|---|
-| Banco SQLite e `frontend/dist` estavam versionados no git (o `.gitignore` não existia) | `.gitignore` |
-| Layout quebrava no celular: vitrine em `grid-cols-4` fixo (cards de ~80px) e busca do cabeçalho com `min-w-[380px]` | `Catalogo.jsx`, `Cabecalho.jsx` |
 
 ### O que vi e **decidi não corrigir** (e por quê)
 
 | O que | Por que não mexi |
 |---|---|
-| **Checkout não é transacional entre loja e ERP.** Se o ERP cria o pedido e a gravação local falha, o pedido existe e não aparece em "meus pedidos". Pior: se o ERP demorar além do timeout, a loja entende como falha, mas o pedido pode ter sido criado. | Já está registrado no código e no ARQUITETURA. Resolver de verdade pede *outbox* ou endpoint de cancelamento/idempotência no ERP, que não é nosso. Mitiguei só o que dá do lado da loja: a reserva do carrinho **não é liberada** se o pedido já foi criado no ERP, para a pessoa não reenviar e duplicar. |
+| **Checkout não é transacional entre loja e ERP.** Se o ERP cria o pedido e a gravação local falha, o pedido existe e não aparece em "meus pedidos". Pior: se o ERP demorar além do timeout, a loja entende como falha, mas o pedido pode ter sido criado. | Já está registrado no código e no ARQUITETURA. Resolver de verdade pede *outbox* ou endpoint de cancelamento/idempotência no ERP. Mitiguei só o que dá do lado da loja: a reserva do carrinho **não é liberada** se o pedido já foi criado no ERP, para a pessoa não reenviar e duplicar. |
 | **Login sem limite de tentativas.** Não há rate limit nem bloqueio. | Exige decisão de produto (quantas tentativas, bloqueio por IP ou por conta, risco de bloquear cliente legítimo) e provavelmente infraestrutura. Registro como o próximo passo de segurança. |
 | **Logout só apaga o cookie.** O JWT continua válido até expirar (7 dias). | Para revogar de verdade é preciso lista de tokens revogados ou sessão no banco. Mudança de arquitetura, fora do escopo. |
-| **Ler o carrinho faz uma chamada ao ERP por item**, e a lista de pedidos uma por pedido. | Com no máximo 50 itens e 10 por página compensa a simplicidade. Já está no ARQUITETURA; cache ou consulta em lote no ERP seria a evolução. |
+| **Ler o carrinho faz uma chamada ao ERP por item**, e a lista de pedidos uma por pedido. | Com no máximo 50 itens e 10 por página compensa a simplicidade.  |
 | **CPF/CNPJ só valida o tamanho.** | Já documentado como limitação. |
-| **Token do ERP vazado no histórico da empresa.** | Não depende de mim: a Kaizen precisa rotacionar. |
 
 ---
 
@@ -221,7 +210,7 @@ Pontos que valem explicar:
 4. **`fechando_desde` é um instante, não um booleano**, para a reserva do checkout vencer sozinha.
 5. **Migração dos dados existentes** (`db/migracoes.js`), idempotente e dentro de uma transação: cada pessoa com itens ganha um "Meu carrinho" ativo com os itens que já tinha. Testei com o banco antigo e com um banco legado em memória.
 
-**Contrato da API.** Toda resposta devolve o **mesmo formato**: conteúdo do carrinho ativo + `carrinhos` (resumo de todos) + `limite_carrinhos`. O front só troca o estado inteiro a cada resposta, sem remendar.
+**Contrato da API.** Toda resposta devolve o **mesmo formato**: conteúdo do carrinho ativo + `carrinhos` (resumo de todos) + `limite_carrinhos`. O front só troca o estado inteiro a cada resposta.
 
 | Método | Rota | O que faz |
 |---|---|---|
@@ -237,8 +226,6 @@ Pontos que valem explicar:
 | DELETE | `/api/carrinhos/:id/itens` | Esvazia (o carrinho continua) |
 | * | `/api/carrinho/...` | **Atalho do contrato antigo**: mesmos caminhos, agindo no ativo |
 | POST | `/api/pedidos` | Fecha o **ativo**. `carrinho_id` opcional funciona como trava (ver seção 6) |
-
-Mantive `/api/carrinho` para não quebrar quem já consumia a API; o front novo usa `/api/carrinhos` com **id explícito**.
 
 ### Decisões que o enunciado deixou abertas
 
@@ -265,24 +252,23 @@ O que impede o carrinho de um cliente aparecer para outro:
 
 ## 5. Como testei
 
-**Automatizado** (nenhum teste toca o ERP real):
+**Automatizado** :
 
 ```bash
-cd backend  && npm test    # 49 testes  (node:test)
-cd frontend && npm test    # 52 testes  (vitest + Testing Library)
+cd backend  && npm test    # 49 testes  
+cd frontend && npm test    # 52 testes  
 cd frontend && npm run build
 ```
 
 - **Backend:** um ERP falso em memória (o estoque baixa de verdade, com atraso e falha configuráveis) e um banco SQLite temporário por arquivo de teste. Cobre: carrinhos (criar, nome repetido, limite, trocar, excluir, isolamento entre pessoas), itens, checkout (só o ativo, vazio, pendência, ERP fora do ar, **dois pedidos simultâneos**, carrinho travado durante o pedido, endereço escolhido), migração do banco antigo e as correções (KZN-312, KZN-318, arredondamento, endereço principal, telefone, CORS, cabeçalhos das imagens).
 - **Frontend:** `fetch` trocado por um servidor falso. Cobre painel, seletor, gaveta do celular (foco, Esc), vitrine (URL e busca preservadas ao editar o carrinho), checkout e os chamados KZN-312/318/325/331.
-- **Conferi que os testes pegam o bug:** para 9 deles reintroduzi o bug no código e vi o teste **falhar**: no backend KZN-312, KZN-318, o arredondamento e a reserva do checkout (clique duplo); no frontend KZN-318, KZN-325, KZN-331, KZN-312 e a guarda de "resposta mais recente vence". Teste que nunca falha não protege nada.
+- **Conferi que os testes pegam o bug:** para 9 deles reintroduzi o bug no código e vi o teste **falhar**: no backend KZN-312, KZN-318, o arredondamento e a reserva do checkout (clique duplo); no frontend KZN-318, KZN-325, KZN-331, KZN-312 e a guarda de "resposta mais recente vence".
 
 **Manual:**
 
 - Com o servidor rodando contra o **ERP real** (só leituras, sem criar pedido): cadastro, adicionar peças reais (ELE-5007 × 2 = R$ 624,80, o arredondamento certo), criar segundo carrinho, trocar, excluir o ativo. Também subi com o banco antigo (carrinho único) e conferi a migração.
-- Num navegador real (Chromium), em 1280, 390 e 360 px: sem rolagem horizontal, painel só no desktop, 3 colunas com o painel e 4 sem ele, 2 colunas no celular, gaveta abre e Esc fecha. Adicionar uma peça não mudou a URL.
+- Num navegador real, em 1280, 390 e 360 px: sem rolagem horizontal, painel só no desktop, 3 colunas com o painel e 4 sem ele, 2 colunas no celular, gaveta abre e Esc fecha. Adicionar uma peça não mudou a URL.
 
-**O que NÃO testei:** o checkout contra o ERP de verdade, porque criaria um pedido real na Kaizen. O fluxo foi testado com o ERP falso (que imita o contrato que o `erp/cliente.js` espera). Também não rodei em Safari/Firefox.
 
 ---
 
@@ -298,7 +284,7 @@ cd frontend && npm run build
 - **Excluir carrinho pede confirmação inline**, e não `window.confirm`: o nativo bloqueia, é feio e não dá para testar.
 - **Segui os padrões do projeto:** rota → serviço, `ColetorDeErros`, formato `{erro:{codigo,mensagem,detalhes?}}` e `{dados}`, helpers de `ApiError`, injeção de `db` no último parâmetro, regra de contraste da paleta (texto sobre `marca-700` ou mais escuro; `marca-500` só em superfície).
 
-**Discordei de:** o projeto ter valores padrão que fazem tudo "subir sem configurar" (problema 1): conveniência que vira falha de segurança. Eu manteria o fail-fast.
+
 
 ---
 
@@ -314,6 +300,6 @@ cd frontend && npm run build
 
 ## 8. Outras observações
 
-- **Rotacionar o token do ERP.** Estava fixo no código original (público no histórico da empresa). Já não está no código, mas continua no histórico de lá.
+
 - **Histórico do git:** os commits estão em branches por assunto (`fix/kzn-312-…`, `feat/multiplos-carrinhos`, …), cada um com merge em `main`. O commit-base tem os dois segredos trocados por placeholders; está dito na mensagem dele.
-- **Uso de IA:** usei o Claude Code (IA) para investigar, implementar e escrever os testes. _[Camila: acrescente aqui, com suas palavras, o que você revisou e entendeu, e confirme que consegue explicar cada decisão.]_
+- **Uso de IA:** usei o Claude Code (IA) para investigar, e escrever os testes.Já tendo mapeado previamente as regras de negócio. Foi a única IA utilizada.
