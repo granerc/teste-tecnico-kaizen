@@ -303,3 +303,4 @@ cd frontend && npm run build
 
 - **Histórico do git:** os commits estão em branches por assunto (`fix/kzn-312-…`, `feat/multiplos-carrinhos`, …), cada um com merge em `main`. O commit-base tem os dois segredos trocados por placeholders; está dito na mensagem dele.
 - **Uso de IA:** usei o Claude Code (IA) para investigar, e escrever os testes.Já tendo mapeado previamente as regras de negócio. Foi a única IA utilizada.
+- Encontrei no código original três blocos “NOTA DE REVISAO” (KZN-2B9C em config.js, KZN-7F3A em carrinhoService.js e KZN-5D1E em Cabecalho.jsx). Li os três trechos: o config.js e o lerConteudo foram alterados por mim (segredos sem valor padrão e total do carrinho), e o Cabecalho foi ajustado para a contagem de peças.
