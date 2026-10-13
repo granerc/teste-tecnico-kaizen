@@ -126,7 +126,7 @@ O backend já fazia a coisa certa (usa o `endereco_id` que recebe), então o con
 | **O que está errado** | A rota fazia `lerBooleano(corpo.principal) ?? false`. O serviço já tratava `undefined` como "não mexa", mas ele nunca chegava. |
 | **Como cheguei nele** | Reproduzi: editar só o número da "Casa" (principal) e listar: `principal=false`. |
 | **Impacto** | O checkout ficava sem endereço padrão e a pessoa só percebia depois. |
-| **Corrigi?** | Sim (rota manda `undefined` quando o campo falta). Ver a decisão na seção 6. |
+| **Corrigi?** | Sim (rota manda `undefined` quando o campo falta). Ver a dúvida de produto na seção 6. |
 | **Arquivos alterados** | `backend/src/routes/enderecos.js`, `backend/src/services/enderecoService.js` |
 
 ### Problema 6 — Não dava para apagar o telefone
@@ -288,7 +288,9 @@ cd frontend && npm run build
 ## 6. Decisões e suposições
 
 - **`carrinho_id` no checkout é uma trava, não uma escolha.** O enunciado diz que o checkout fecha "o que estiver ativo". Meu primeiro rascunho aceitava fechar qualquer carrinho da pessoa; corrigi. Agora o servidor sempre fecha o ativo. O front manda o id do carrinho que está na tela, e se ele não for o ativo (a pessoa trocou em outra aba) a resposta é **409 `CARRINHO_ATIVO_MUDOU`** e a tela se relê.
-- **Marcar `principal: false` num endereço não rebaixa o principal.** O principal só deixa de ser quando **outro** é promovido. Isso vale a mesma garantia de `removerEndereco`: o checkout nunca fica sem endereço padrão. Se o comercial preferir poder ficar sem principal, é uma linha.
+- **Dúvida de produto (não mudei): enviar `principal: false` explicitamente num endereço que é o principal deixa a pessoa sem principal.** Corrigi só o caso em que o campo **não é enviado** (isso é bug). Já o `false` explícito pode ser intencional, então não alterei o comportamento. Pergunta para o comercial: a loja deve garantir sempre um principal (como `removerEndereco` já faz ao apagar o principal)?
+- **Estoque do ERP atualiza de 30 em 30 minutos.** O carrinho mostra o estoque no momento da leitura; o checkout pode, mesmo assim, receber 409 do ERP. Nesse caso a mensagem do ERP é repassada, a reserva do carrinho é liberada e o front relê o carrinho.
+- **Node:** usei o LTS (22); o `engines` pede `>=20`.
 - **O "Meu carrinho" padrão nasce sob demanda** (na primeira leitura ou criação), e não no cadastro. Assim contas antigas, novas e migradas passam pelo mesmo caminho. Criar um carrinho garante o padrão antes, para o resultado não depender de a pessoa já ter aberto a lista (um teste pegou essa dependência de ordem).
 - **Mantive `/api/carrinho`** como atalho do ativo para não quebrar consumidores do contrato antigo.
 - **Seletor com `<select>` nativo**, e não um menu customizado: acessível por padrão e usa o seletor do próprio celular.

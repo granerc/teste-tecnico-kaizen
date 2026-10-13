@@ -15,7 +15,7 @@ function BotaoQuantidade({ rotulo, children, ...props }) {
       {...props}
       className="grid size-8 place-items-center rounded-md border border-tinta-300 bg-white
         text-base font-semibold text-tinta-700 hover:bg-tinta-100
-        disabled:cursor-not-allowed disabled:text-tinta-400 disabled:hover:bg-white"
+        disabled:cursor-not-allowed disabled:text-tinta-500 disabled:hover:bg-white"
     >
       {children}
     </button>

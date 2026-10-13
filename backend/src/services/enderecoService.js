@@ -81,10 +81,8 @@ export function atualizarEndereco(usuarioId, id, dados, db = obterBanco()) {
   const atual = exigirEndereco(usuarioId, id, db);
 
   const transacao = db.transaction(() => {
-    // Principal so sai de um endereco quando OUTRO e promovido: desmarcar o
-    // unico principal deixaria o checkout sem endereco padrao (a mesma garantia
-    // que removerEndereco ja da ao apagar o principal).
-    const principal = dados.principal ? 1 : atual.principal;
+    // undefined = campo nao enviado: mantem o que ja estava.
+    const principal = dados.principal === undefined ? atual.principal : (dados.principal ? 1 : 0);
 
     db.prepare(`
       UPDATE enderecos
