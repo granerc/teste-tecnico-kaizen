@@ -313,4 +313,4 @@ cd frontend && npm run build
 
 - **Rotacionar o token do ERP.** Estava fixo no código original (público no histórico da empresa). Já não está no código, mas continua no histórico de lá.
 - **Histórico do git:** os commits estão em branches por assunto (`fix/kzn-312-…`, `feat/multiplos-carrinhos`, …), cada um com merge em `main`. O commit-base tem os dois segredos trocados por placeholders; está dito na mensagem dele.
-- **Uso de IA:** usei o Claude Code (IA) para investigar, implementar e escrever os testes. Os commits trazem o trailer `Co-Authored-By`. _[Camila: acrescente aqui, com suas palavras, o que você revisou e entendeu, e confirme que consegue explicar cada decisão.]_
+- **Uso de IA:** usei o Claude Code (IA) para investigar, implementar e escrever os testes. _[Camila: acrescente aqui, com suas palavras, o que você revisou e entendeu, e confirme que consegue explicar cada decisão.]_
